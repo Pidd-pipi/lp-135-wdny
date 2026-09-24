@@ -24,6 +24,13 @@ func (r *DonationRepository) Create(d *model.Donation) error {
 	return nil
 }
 
+func (r *DonationRepository) Update(d *model.Donation) error {
+	if err := r.db.Save(d).Error; err != nil {
+		return fmt.Errorf("update donation: %w", err)
+	}
+	return nil
+}
+
 func (r *DonationRepository) FindByID(id uint) (*model.Donation, error) {
 	var d model.Donation
 	err := r.db.Preload("Project").Preload("User").First(&d, id).Error
@@ -46,12 +53,12 @@ func (r *DonationRepository) ListByProject(projectID uint, limit int) ([]model.D
 	return list, nil
 }
 
-// ListByUser 用户捐赠记录（分页）。
+// ListByUser 用户捐赠记录（分页）。已退款的记录保留展示，便于查看退款处理状态。
 func (r *DonationRepository) ListByUser(userID uint, page, pageSize int) ([]model.Donation, int64, error) {
 	var list []model.Donation
 	var total int64
 	q := r.db.Model(&model.Donation{}).Preload("Project").
-		Where("user_id = ? AND payment_status = ?", userID, "success")
+		Where("user_id = ? AND payment_status IN ?", userID, []string{"success", "refunded"})
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("count donations: %w", err)
 	}

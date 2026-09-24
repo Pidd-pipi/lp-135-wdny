@@ -33,10 +33,21 @@ const (
 
 // 支付状态
 const (
-	PaymentSuccess = "success"
-	PaymentPending = "pending"
-	PaymentFailed  = "failed"
+	PaymentSuccess  = "success"
+	PaymentPending  = "pending"
+	PaymentFailed   = "failed"
+	PaymentRefunded = "refunded"
 )
+
+// 退款申请状态
+const (
+	RefundPending  = "pending"
+	RefundApproved = "approved"
+	RefundRejected = "rejected"
+)
+
+// RefundWindowHours 捐款后可提交退款申请的时间窗口（小时），即两天。
+const RefundWindowHours = 48
 
 // 项目分类
 const (

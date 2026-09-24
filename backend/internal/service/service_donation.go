@@ -19,6 +19,7 @@ type DonationService struct {
 	donationRepo *repository.DonationRepository
 	projectRepo  *repository.ProjectRepository
 	userRepo     *repository.UserRepository
+	refundRepo   *repository.RefundRepository
 	logger       *slog.Logger
 }
 
@@ -27,6 +28,7 @@ func NewDonationService(
 	donationRepo *repository.DonationRepository,
 	projectRepo *repository.ProjectRepository,
 	userRepo *repository.UserRepository,
+	refundRepo *repository.RefundRepository,
 	logger *slog.Logger,
 ) *DonationService {
 	return &DonationService{
@@ -34,6 +36,7 @@ func NewDonationService(
 		donationRepo: donationRepo,
 		projectRepo:  projectRepo,
 		userRepo:     userRepo,
+		refundRepo:   refundRepo,
 		logger:       logger,
 	}
 }
@@ -124,12 +127,31 @@ func (s *DonationService) Create(userID uint, in CreateInput) (*model.Donation, 
 	return donation, nil
 }
 
-// MyDonations 我的捐赠记录。
+// MyDonations 我的捐赠记录（含退款申请处理状态）。
 func (s *DonationService) MyDonations(userID uint, page, pageSize int) ([]model.Donation, int64, error) {
-	return s.donationRepo.ListByUser(userID, page, pageSize)
+	list, total, err := s.donationRepo.ListByUser(userID, page, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	ids := make([]uint, 0, len(list))
+	for i := range list {
+		ids = append(ids, list[i].ID)
+	}
+	refunds, err := s.refundRepo.ListByDonationIDs(ids)
+	if err != nil {
+		return nil, 0, err
+	}
+	byDonation := make(map[uint]*model.RefundApplication, len(refunds))
+	for i := range refunds {
+		byDonation[refunds[i].DonationID] = &refunds[i]
+	}
+	for i := range list {
+		list[i].Refund = byDonation[list[i].ID]
+	}
+	return list, total, nil
 }
 
-// Certificate 查询电子凭证。
+// Certificate 查询电子凭证。已退款的捐赠凭证随即失效。
 func (s *DonationService) Certificate(userID, donationID uint) (*model.Donation, error) {
 	d, err := s.donationRepo.FindByID(donationID)
 	if errors.Is(err, repository.ErrNotFound) {
@@ -140,6 +162,9 @@ func (s *DonationService) Certificate(userID, donationID uint) (*model.Donation,
 	}
 	if d.UserID != userID {
 		return nil, fmt.Errorf("forbidden: certificate belongs to another user")
+	}
+	if d.PaymentStatus == constants.PaymentRefunded {
+		return nil, fmt.Errorf("certificate invalid: donation has been refunded")
 	}
 	return d, nil
 }

@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { adminAPI } from '../api';
-import { Project, Organization } from '../types';
+import { Project, Organization, RefundApplication } from '../types';
 
 const Admin = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'projects' | 'organizations'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'organizations' | 'refunds'>('projects');
   const [pendingProjects, setPendingProjects] = useState<Project[]>([]);
   const [pendingOrgs, setPendingOrgs] = useState<Organization[]>([]);
+  const [pendingRefunds, setPendingRefunds] = useState<RefundApplication[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,12 +20,14 @@ const Admin = () => {
 
   const loadPendingItems = async () => {
     try {
-      const [projectsRes, orgsRes] = await Promise.all([
+      const [projectsRes, orgsRes, refundsRes] = await Promise.all([
         adminAPI.getPendingProjects(),
         adminAPI.getPendingOrganizations(),
+        adminAPI.getPendingRefunds(),
       ]);
       setPendingProjects(projectsRes.data.projects);
       setPendingOrgs(orgsRes.data.organizations);
+      setPendingRefunds(refundsRes.data.refunds);
     } catch (error) {
       console.error('加载待审核项目失败:', error);
     } finally {
@@ -49,6 +52,17 @@ const Admin = () => {
       loadPendingItems();
     } catch (error) {
       alert('操作失败');
+    }
+  };
+
+  const handleReviewRefund = async (refundId: string, status: 'approved' | 'rejected') => {
+    const note = status === 'rejected' ? window.prompt('请填写驳回说明（可选）') || '' : '';
+    try {
+      await adminAPI.reviewRefund(refundId, { status, note });
+      alert(status === 'approved' ? '退款已核准，金额已从项目进度、个人累计与排行榜扣回' : '退款申请已驳回');
+      loadPendingItems();
+    } catch (error: any) {
+      alert(error.response?.data?.message || '操作失败');
     }
   };
 
@@ -89,6 +103,16 @@ const Admin = () => {
           }`}
         >
           待审核组织 ({pendingOrgs.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('refunds')}
+          className={`px-6 py-2 rounded-lg font-medium ${
+            activeTab === 'refunds'
+              ? 'bg-primary-600 text-white'
+              : 'bg-white text-gray-600 border border-gray-200'
+          }`}
+        >
+          退款申请 ({pendingRefunds.length})
         </button>
       </div>
 
@@ -141,7 +165,7 @@ const Admin = () => {
             </div>
           )}
         </div>
-      ) : (
+      ) : activeTab === 'organizations' ? (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           {pendingOrgs.length === 0 ? (
             <div className="text-center py-12 text-gray-500">暂无待审核组织</div>
@@ -172,6 +196,62 @@ const Admin = () => {
                         className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
                       >
                         拒绝
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          {pendingRefunds.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">暂无待处理退款申请</div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {pendingRefunds.map((refund) => (
+                <div key={refund.id} className="p-6">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
+                          退款申请
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          申请时间：{new Date(refund.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {refund.donation?.project?.title || `捐赠 #${refund.donationId}`}
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-500">
+                        <div>捐款人：{refund.user?.realName || refund.user?.username || '-'}</div>
+                        <div>
+                          退款金额：¥{(refund.donation?.amount ?? 0).toLocaleString()}
+                        </div>
+                        <div>凭证号：{refund.donation?.certificateNo || '-'}</div>
+                        <div>
+                          捐款时间：
+                          {refund.donation?.createdAt
+                            ? new Date(refund.donation.createdAt).toLocaleString()
+                            : '-'}
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600 mt-2">退款原因：{refund.reason}</div>
+                    </div>
+                    <div className="flex gap-2 ml-6">
+                      <button
+                        onClick={() => handleReviewRefund(refund.id, 'approved')}
+                        className="px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100"
+                      >
+                        核准退款
+                      </button>
+                      <button
+                        onClick={() => handleReviewRefund(refund.id, 'rejected')}
+                        className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
+                      >
+                        驳回
                       </button>
                     </div>
                   </div>

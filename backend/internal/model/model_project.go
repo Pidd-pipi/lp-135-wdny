@@ -46,6 +46,8 @@ type Donation struct {
 	CreatedAt      time.Time `json:"createdAt"`
 	User           *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Project        *Project  `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
+	// Refund 该笔捐赠的退款申请（非数据库字段，查询时按需填充）。
+	Refund *RefundApplication `gorm:"-" json:"refund,omitempty"`
 }
 
 // AdminReview 审核记录。

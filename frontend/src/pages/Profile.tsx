@@ -30,8 +30,29 @@ const Profile = () => {
       const response = await donationAPI.getCertificate(donationId);
       const cert = response.data.certificate;
       alert(`电子凭证\n\n凭证编号：${cert.certificateNo}\n捐赠金额：¥${cert.amount}\n项目：${cert.projectTitle}\n捐赠人：${cert.donorName}\n捐赠时间：${new Date(cert.createdAt).toLocaleString()}`);
-    } catch (error) {
-      alert('获取凭证失败');
+    } catch (error: any) {
+      alert(error.response?.data?.message || '获取凭证失败');
+    }
+  };
+
+  const applyRefund = async (donationId: string) => {
+    const reason = window.prompt('请填写退款原因（提交后由平台管理员审核）');
+    if (reason === null) return;
+    if (!reason.trim()) {
+      alert('请填写退款原因');
+      return;
+    }
+    try {
+      const response = await donationAPI.applyRefund(donationId, { reason: reason.trim() });
+      const refund = response.data.refund;
+      if (refund?.status === 'pending') {
+        alert('退款申请已提交，请等待管理员审核');
+      } else {
+        alert(`该笔捐赠已有退款申请，当前状态：${refundStatusMap[refund?.status] || refund?.status}`);
+      }
+      loadDonations();
+    } catch (error: any) {
+      alert(error.response?.data?.message || '退款申请提交失败');
     }
   };
 
@@ -43,6 +64,22 @@ const Profile = () => {
     user: '个人用户',
     org: '公益组织',
     admin: '管理员',
+  };
+
+  // 退款申请窗口：捐款后两天（48 小时）内可申请，与后端规则一致。
+  const REFUND_WINDOW_MS = 48 * 3600 * 1000;
+  const withinRefundWindow = (createdAt: string) =>
+    Date.now() - new Date(createdAt).getTime() <= REFUND_WINDOW_MS;
+
+  const refundStatusMap: Record<string, string> = {
+    pending: '退款审核中',
+    approved: '退款已核准',
+    rejected: '退款已驳回',
+  };
+  const refundStatusClass: Record<string, string> = {
+    pending: 'bg-yellow-100 text-yellow-700',
+    approved: 'bg-red-100 text-red-600',
+    rejected: 'bg-gray-200 text-gray-500',
   };
 
   return (
@@ -147,24 +184,61 @@ const Profile = () => {
                   {donations.map((donation) => (
                     <div key={donation.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">{donation.project?.title}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium text-gray-900">{donation.project?.title}</div>
+                          {donation.paymentStatus === 'refunded' && (
+                            <span className="px-2 py-0.5 bg-red-100 text-red-600 rounded text-xs font-medium">
+                              已退款
+                            </span>
+                          )}
+                          {donation.paymentStatus !== 'refunded' && donation.refund && (
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${refundStatusClass[donation.refund.status] || 'bg-gray-200 text-gray-500'}`}>
+                              {refundStatusMap[donation.refund.status] || donation.refund.status}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-sm text-gray-500">
                           {new Date(donation.createdAt).toLocaleString()}
                         </div>
                         {donation.certificateNo && (
                           <div className="text-sm text-primary-600">
                             凭证号：{donation.certificateNo}
+                            {donation.paymentStatus === 'refunded' && (
+                              <span className="ml-2 text-gray-400">（已失效）</span>
+                            )}
+                          </div>
+                        )}
+                        {donation.refund && (
+                          <div className="text-sm text-gray-500 mt-1">
+                            退款原因：{donation.refund.reason}
+                            {donation.refund.status === 'rejected' && donation.refund.reviewNote && (
+                              <span className="ml-2">驳回说明：{donation.refund.reviewNote}</span>
+                            )}
                           </div>
                         )}
                       </div>
                       <div className="text-right">
-                        <div className="text-xl font-bold text-primary-600">¥{donation.amount.toLocaleString()}</div>
-                        <button
-                          onClick={() => viewCertificate(donation.id)}
-                          className="text-sm text-primary-600 hover:text-primary-700"
-                        >
-                          查看凭证
-                        </button>
+                        <div className={`text-xl font-bold ${donation.paymentStatus === 'refunded' ? 'text-gray-400 line-through' : 'text-primary-600'}`}>
+                          ¥{donation.amount.toLocaleString()}
+                        </div>
+                        <div className="space-x-3">
+                          {donation.paymentStatus !== 'refunded' && (
+                            <button
+                              onClick={() => viewCertificate(donation.id)}
+                              className="text-sm text-primary-600 hover:text-primary-700"
+                            >
+                              查看凭证
+                            </button>
+                          )}
+                          {donation.paymentStatus === 'success' && !donation.refund && withinRefundWindow(donation.createdAt) && (
+                            <button
+                              onClick={() => applyRefund(donation.id)}
+                              className="text-sm text-red-500 hover:text-red-600"
+                            >
+                              申请退款
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

@@ -22,6 +22,7 @@ func Setup(
 	donationSvc *service.DonationService,
 	rankingSvc *service.RankingService,
 	adminSvc *service.AdminService,
+	refundSvc *service.RefundService,
 	cfg *config.Config,
 	logger *slog.Logger,
 ) *gin.Engine {
@@ -34,6 +35,7 @@ func Setup(
 	donationHandler := handler.NewDonationHandler(donationSvc)
 	rankingHandler := handler.NewRankingHandler(rankingSvc)
 	adminHandler := handler.NewAdminHandler(adminSvc)
+	refundHandler := handler.NewRefundHandler(refundSvc)
 
 	r.GET("/healthz", healthHandler.Healthz)
 	r.GET("/readyz", healthHandler.Readyz)
@@ -65,6 +67,7 @@ func Setup(
 		donations.POST("", middleware.Auth(authSvc), donationHandler.Create)
 		donations.GET("/my", middleware.Auth(authSvc), donationHandler.My)
 		donations.GET("/:id/certificate", middleware.Auth(authSvc), donationHandler.Certificate)
+		donations.POST("/:id/refund", middleware.Auth(authSvc), refundHandler.Apply)
 	}
 
 	ranking := v1.Group("/ranking")
@@ -80,6 +83,8 @@ func Setup(
 		admin.POST("/projects/:id/review", adminHandler.ReviewProject)
 		admin.GET("/organizations/pending", adminHandler.PendingOrganizations)
 		admin.POST("/organizations/:id/review", adminHandler.ReviewOrganization)
+		admin.GET("/refunds/pending", refundHandler.Pending)
+		admin.POST("/refunds/:id/review", refundHandler.Review)
 	}
 
 	r.GET("/swagger/doc.json", healthHandler.SwaggerJSON)
