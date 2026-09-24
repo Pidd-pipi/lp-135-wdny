@@ -42,15 +42,17 @@ func main() {
 	projectRepo := repository.NewProjectRepository(db)
 	updateRepo := repository.NewProjectUpdateRepository(db)
 	donationRepo := repository.NewDonationRepository(db)
+	refundRepo := repository.NewRefundRepository(db)
 	reviewRepo := repository.NewAdminReviewRepository(db)
 
 	authSvc := service.NewAuthService(userRepo, orgRepo, cfg.JWTSecret, cfg.JWTExpire, logger)
 	projectSvc := service.NewProjectService(projectRepo, updateRepo, orgRepo, donationRepo, logger)
 	donationSvc := service.NewDonationService(db, donationRepo, projectRepo, userRepo, logger)
+	refundSvc := service.NewRefundService(db, refundRepo, donationRepo, projectRepo, userRepo, logger)
 	rankingSvc := service.NewRankingService(userRepo, logger)
 	adminSvc := service.NewAdminService(projectRepo, orgRepo, reviewRepo, logger)
 
-	engine := router.Setup(db, authSvc, projectSvc, donationSvc, rankingSvc, adminSvc, cfg, logger)
+	engine := router.Setup(db, authSvc, projectSvc, donationSvc, refundSvc, rankingSvc, adminSvc, cfg, logger)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.ServerPort,

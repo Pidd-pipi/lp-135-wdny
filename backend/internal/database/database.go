@@ -43,6 +43,7 @@ func Connect(dsn string, maxOpen, maxIdle, connMaxLifetime, retryCount, retryInt
 		&model.Project{},
 		&model.ProjectUpdate{},
 		&model.Donation{},
+		&model.Refund{},
 		&model.AdminReview{},
 		&model.VolunteerService{},
 	); err != nil {

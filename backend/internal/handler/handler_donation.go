@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -64,6 +66,10 @@ func (h *DonationHandler) Certificate(c *gin.Context) {
 	}
 	d, err := h.donationSvc.Certificate(c.GetUint("user_id"), uint(id))
 	if err != nil {
+		if errors.Is(err, service.ErrCertificateInvalid) {
+			util.FailError(c, fmt.Errorf("%w: %s", util.ErrGone, err.Error()))
+			return
+		}
 		util.FailError(c, err)
 		return
 	}

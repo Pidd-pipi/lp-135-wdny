@@ -6,6 +6,7 @@ import (
 
 	"github.com/givetrack/givetrack/internal/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // ErrNotFound 哨兵错误。
@@ -58,6 +59,19 @@ func (r *UserRepository) Update(u *model.User) error {
 	return nil
 }
 
+// FindByIDForUpdate 事务内加行锁查询用户，退款核准时用于扣减累计捐赠。
+func (r *UserRepository) FindByIDForUpdate(id uint) (*model.User, error) {
+	var u model.User
+	err := r.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&u, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find user for update: %w", err)
+	}
+	return &u, nil
+}
+
 // RankingTopDonation 按累计捐款金额排行。
 func (r *UserRepository) RankingTopDonation(limit int) ([]model.User, error) {
 	var list []model.User
@@ -81,9 +95,9 @@ func (r *UserRepository) RankingTopService(limit int) ([]model.User, error) {
 // Stats 平台统计。
 func (r *UserRepository) Stats() (totalUsers int64, totalDonation float64, totalServiceHours float64, err error) {
 	var u struct {
-		TotalUsers  int64
-		TotalDon    float64
-		TotalHours  float64
+		TotalUsers int64
+		TotalDon   float64
+		TotalHours float64
 	}
 	if err := r.db.Model(&model.User{}).Where("role = ?", "user").
 		Select("COUNT(*) AS total_users, COALESCE(SUM(total_donation),0) AS total_don, COALESCE(SUM(service_hours),0) AS total_hours").

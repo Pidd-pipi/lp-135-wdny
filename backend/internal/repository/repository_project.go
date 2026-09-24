@@ -6,6 +6,7 @@ import (
 
 	"github.com/givetrack/givetrack/internal/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // ProjectRepository 项目数据访问。
@@ -41,6 +42,19 @@ func (r *ProjectRepository) Update(p *model.Project) error {
 		return fmt.Errorf("update project: %w", err)
 	}
 	return nil
+}
+
+// FindByIDForUpdate 事务内加行锁查询项目，退款核准时用于扣减筹款进度。
+func (r *ProjectRepository) FindByIDForUpdate(id uint) (*model.Project, error) {
+	var p model.Project
+	err := r.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&p, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find project for update: %w", err)
+	}
+	return &p, nil
 }
 
 // List 分页查询项目，支持分类/状态筛选。

@@ -40,6 +40,8 @@ func FailError(c *gin.Context, err error) {
 		Fail(c, http.StatusUnauthorized, constants.CodeUnauthorized, err.Error())
 	case errors.Is(err, ErrForbidden):
 		Fail(c, http.StatusForbidden, constants.CodeForbidden, err.Error())
+	case errors.Is(err, ErrGone):
+		Fail(c, http.StatusGone, constants.CodeGone, err.Error())
 	default:
 		Fail(c, http.StatusBadRequest, constants.CodeBadRequest, err.Error())
 	}
@@ -50,6 +52,9 @@ var ErrUnauthorized = errors.New("unauthorized")
 
 // ErrForbidden 无权限错误。
 var ErrForbidden = errors.New("forbidden")
+
+// ErrGone 资源已失效（如已退款捐赠的电子凭证）。
+var ErrGone = errors.New("resource gone")
 
 // Page 分页参数。
 type Page struct {

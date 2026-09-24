@@ -53,6 +53,14 @@ export const donationAPI = {
   createDonation: (data: any) => api.post('/donations', data),
   getMyDonations: (params?: any) => api.get('/donations/my', { params }),
   getCertificate: (id: string) => api.get(`/donations/${id}/certificate`),
+  applyRefund: (id: string, data: { reason: string }) => api.post(`/donations/${id}/refund`, data),
+};
+
+export const refundAPI = {
+  getMyRefunds: (params?: any) => api.get('/refunds/my', { params }),
+  getPendingRefunds: () => api.get('/admin/refunds/pending'),
+  reviewRefund: (id: string, data: { status: 'approved' | 'rejected'; comment?: string }) =>
+    api.post(`/admin/refunds/${id}/review`, data),
 };
 
 export const rankingAPI = {

@@ -72,8 +72,23 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 // Me 当前用户信息。
 func (h *AuthHandler) Me(c *gin.Context) {
-	userID := c.GetUint("user_id")
-	util.OK(c, gin.H{"userId": userID, "username": c.GetString("username"), "role": c.GetString("role")})
+	user, err := h.authSvc.GetUser(c.GetUint("user_id"))
+	if err != nil {
+		util.FailError(c, err)
+		return
+	}
+	util.OK(c, gin.H{
+		"userId":        user.ID,
+		"username":      user.Username,
+		"email":         user.Email,
+		"role":          user.Role,
+		"realName":      user.RealName,
+		"avatar":        user.Avatar,
+		"phone":         user.Phone,
+		"totalDonation": user.TotalDonation,
+		"serviceHours":  user.ServiceHours,
+		"createdAt":     user.CreatedAt,
+	})
 }
 
 // UpdateProfileRequest 更新资料请求。

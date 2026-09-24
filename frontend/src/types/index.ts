@@ -47,13 +47,30 @@ export interface Donation {
   projectId: string;
   amount: number;
   paymentMethod: 'wechat' | 'alipay' | 'bank';
-  paymentStatus: 'pending' | 'success' | 'failed';
+  paymentStatus: 'pending' | 'success' | 'failed' | 'refunded';
   certificateNo?: string;
   isAnonymous: boolean;
   message?: string;
   createdAt: string;
   project?: Project;
   donorName?: string;
+  refund?: Refund;
+}
+
+export type RefundStatus = 'pending' | 'approved' | 'rejected';
+
+export interface Refund {
+  id: string;
+  donationId: string;
+  userId: string;
+  reason: string;
+  status: RefundStatus;
+  reviewerId?: number;
+  reviewComment?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+  donation?: Donation;
 }
 
 export interface ProjectUpdate {

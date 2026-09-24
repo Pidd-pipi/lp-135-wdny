@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/givetrack/givetrack/internal/constants"
 	"github.com/givetrack/givetrack/internal/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // DonationRepository 捐赠数据访问。
@@ -47,11 +49,12 @@ func (r *DonationRepository) ListByProject(projectID uint, limit int) ([]model.D
 }
 
 // ListByUser 用户捐赠记录（分页）。
+// 包含已退款记录，便于用户在个人中心查看退款处理状态。
 func (r *DonationRepository) ListByUser(userID uint, page, pageSize int) ([]model.Donation, int64, error) {
 	var list []model.Donation
 	var total int64
-	q := r.db.Model(&model.Donation{}).Preload("Project").
-		Where("user_id = ? AND payment_status = ?", userID, "success")
+	q := r.db.Model(&model.Donation{}).Preload("Project").Preload("Refund").
+		Where("user_id = ? AND payment_status IN ?", userID, []string{constants.PaymentSuccess, constants.PaymentRefunded})
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("count donations: %w", err)
 	}
@@ -59,6 +62,27 @@ func (r *DonationRepository) ListByUser(userID uint, page, pageSize int) ([]mode
 		return nil, 0, fmt.Errorf("list donations by user: %w", err)
 	}
 	return list, total, nil
+}
+
+// FindByIDForUpdate 在事务内对捐赠记录加行锁查询，保证退款核准时金额只扣一次。
+func (r *DonationRepository) FindByIDForUpdate(id uint) (*model.Donation, error) {
+	var d model.Donation
+	err := r.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&d, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find donation for update: %w", err)
+	}
+	return &d, nil
+}
+
+// UpdateStatus 更新捐赠支付状态（用于退款核准时置为 refunded）。
+func (r *DonationRepository) UpdateStatus(id uint, status string) error {
+	if err := r.db.Model(&model.Donation{}).Where("id = ?", id).Update("payment_status", status).Error; err != nil {
+		return fmt.Errorf("update donation status: %w", err)
+	}
+	return nil
 }
 
 // AdminReviewRepository 审核记录数据访问。

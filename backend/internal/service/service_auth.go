@@ -146,6 +146,11 @@ func (s *AuthService) ParseToken(tokenStr string) (*Claims, error) {
 	return claims, nil
 }
 
+// GetUser 按 ID 查询用户。
+func (s *AuthService) GetUser(userID uint) (*model.User, error) {
+	return s.userRepo.FindByID(userID)
+}
+
 // UpdateProfile 更新个人资料。
 func (s *AuthService) UpdateProfile(userID uint, realName, phone, avatar string) (*model.User, error) {
 	user, err := s.userRepo.FindByID(userID)

@@ -4,20 +4,20 @@ import "time"
 
 // Project 公益项目。
 type Project struct {
-	ID             uint         `gorm:"primaryKey" json:"id"`
-	OrganizationID uint         `gorm:"index;not null" json:"organizationId"`
-	Title          string       `gorm:"size:200;not null" json:"title"`
-	Description    string       `gorm:"type:text" json:"description"`
-	Category       string       `gorm:"size:32;index;not null" json:"category"`
-	TargetAmount   float64      `gorm:"type:decimal(14,2);not null" json:"targetAmount"`
-	CurrentAmount  float64      `gorm:"type:decimal(14,2);default:0" json:"currentAmount"`
-	ExecutionPlan  string       `gorm:"type:text" json:"executionPlan"`
-	CoverImage     string       `gorm:"size:255" json:"coverImage"`
-	Status         string       `gorm:"size:20;index;default:pending" json:"status"`
-	StartDate      *time.Time   `json:"startDate"`
-	EndDate        *time.Time   `json:"endDate"`
-	CreatedAt      time.Time    `json:"createdAt"`
-	UpdatedAt      time.Time    `json:"updatedAt"`
+	ID             uint          `gorm:"primaryKey" json:"id"`
+	OrganizationID uint          `gorm:"index;not null" json:"organizationId"`
+	Title          string        `gorm:"size:200;not null" json:"title"`
+	Description    string        `gorm:"type:text" json:"description"`
+	Category       string        `gorm:"size:32;index;not null" json:"category"`
+	TargetAmount   float64       `gorm:"type:decimal(14,2);not null" json:"targetAmount"`
+	CurrentAmount  float64       `gorm:"type:decimal(14,2);default:0" json:"currentAmount"`
+	ExecutionPlan  string        `gorm:"type:text" json:"executionPlan"`
+	CoverImage     string        `gorm:"size:255" json:"coverImage"`
+	Status         string        `gorm:"size:20;index;default:pending" json:"status"`
+	StartDate      *time.Time    `json:"startDate"`
+	EndDate        *time.Time    `json:"endDate"`
+	CreatedAt      time.Time     `json:"createdAt"`
+	UpdatedAt      time.Time     `json:"updatedAt"`
 	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 }
 
@@ -33,19 +33,35 @@ type ProjectUpdate struct {
 
 // Donation 捐赠记录。
 type Donation struct {
-	ID             uint      `gorm:"primaryKey" json:"id"`
-	UserID         uint      `gorm:"index;not null" json:"userId"`
-	ProjectID      uint      `gorm:"index;not null" json:"projectId"`
-	Amount         float64   `gorm:"type:decimal(14,2);not null" json:"amount"`
-	PaymentMethod  string    `gorm:"size:20" json:"paymentMethod"`
-	PaymentStatus  string    `gorm:"size:20;index;default:success" json:"paymentStatus"`
-	TransactionID  string    `gorm:"size:64" json:"transactionId"`
-	CertificateNo  string    `gorm:"size:64" json:"certificateNo"`
-	IsAnonymous    bool      `gorm:"default:false" json:"isAnonymous"`
-	Message        string    `gorm:"size:255" json:"message"`
-	CreatedAt      time.Time `json:"createdAt"`
-	User           *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Project        *Project  `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	UserID        uint      `gorm:"index;not null" json:"userId"`
+	ProjectID     uint      `gorm:"index;not null" json:"projectId"`
+	Amount        float64   `gorm:"type:decimal(14,2);not null" json:"amount"`
+	PaymentMethod string    `gorm:"size:20" json:"paymentMethod"`
+	PaymentStatus string    `gorm:"size:20;index;default:success" json:"paymentStatus"`
+	TransactionID string    `gorm:"size:64" json:"transactionId"`
+	CertificateNo string    `gorm:"size:64" json:"certificateNo"`
+	IsAnonymous   bool      `gorm:"default:false" json:"isAnonymous"`
+	Message       string    `gorm:"size:255" json:"message"`
+	CreatedAt     time.Time `json:"createdAt"`
+	User          *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Project       *Project  `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
+	Refund        *Refund   `gorm:"foreignKey:DonationID" json:"refund,omitempty"`
+}
+
+// Refund 退款申请（与捐赠记录一对一）。
+type Refund struct {
+	ID            uint       `gorm:"primaryKey" json:"id"`
+	DonationID    uint       `gorm:"uniqueIndex;not null" json:"donationId"`
+	UserID        uint       `gorm:"index;not null" json:"userId"`
+	Reason        string     `gorm:"type:text;not null" json:"reason"`
+	Status        string     `gorm:"size:20;index;default:pending" json:"status"`
+	ReviewerID    uint       `gorm:"default:0" json:"reviewerId"`
+	ReviewComment string     `gorm:"size:255" json:"reviewComment"`
+	ReviewedAt    *time.Time `json:"reviewedAt"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	UpdatedAt     time.Time  `json:"updatedAt"`
+	Donation      *Donation  `gorm:"foreignKey:DonationID" json:"donation,omitempty"`
 }
 
 // AdminReview 审核记录。

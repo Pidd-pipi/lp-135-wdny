@@ -38,8 +38,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (!prev) return prev;
           const next = {
             ...prev,
+            id: String(response.data.userId),
             username: response.data.username ?? prev.username,
             role: response.data.role ?? prev.role,
+            email: response.data.email ?? prev.email,
+            realName: response.data.realName ?? prev.realName,
+            avatar: response.data.avatar ?? prev.avatar,
+            phone: response.data.phone ?? prev.phone,
+            totalDonation: response.data.totalDonation ?? prev.totalDonation,
+            serviceHours: response.data.serviceHours ?? prev.serviceHours,
           };
           localStorage.setItem('user', JSON.stringify(next));
           return next;

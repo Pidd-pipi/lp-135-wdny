@@ -129,7 +129,7 @@ func (s *DonationService) MyDonations(userID uint, page, pageSize int) ([]model.
 	return s.donationRepo.ListByUser(userID, page, pageSize)
 }
 
-// Certificate 查询电子凭证。
+// Certificate 查询电子凭证。退款核准后凭证失效。
 func (s *DonationService) Certificate(userID, donationID uint) (*model.Donation, error) {
 	d, err := s.donationRepo.FindByID(donationID)
 	if errors.Is(err, repository.ErrNotFound) {
@@ -141,8 +141,14 @@ func (s *DonationService) Certificate(userID, donationID uint) (*model.Donation,
 	if d.UserID != userID {
 		return nil, fmt.Errorf("forbidden: certificate belongs to another user")
 	}
+	if d.PaymentStatus == constants.PaymentRefunded {
+		return nil, ErrCertificateInvalid
+	}
 	return d, nil
 }
+
+// ErrCertificateInvalid 凭证已失效（对应捐赠已退款）。
+var ErrCertificateInvalid = errors.New("电子凭证已失效：该笔捐赠已退款")
 
 func newReferenceNo(prefix string) (string, error) {
 	b := make([]byte, 6)

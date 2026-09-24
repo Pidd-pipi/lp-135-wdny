@@ -81,6 +81,15 @@ go run ./cmd/server
         ├── middleware/  router/  util/  database/
 ```
 
+## 退款流程
+
+误操作捐款后，捐款人可在 **捐赠完成后 48 小时内** 于「个人中心 - 捐赠记录」填写原因提交退款申请：
+
+1. **提交（幂等）**：同一笔捐赠只能有一条申请；重复提交直接返回当前申请状态，不会重复创建。
+2. **状态可见**：个人记录实时展示 `待审核 / 已退款 / 已驳回`，驳回时展示管理员备注。
+3. **管理员核准**：后台「待处理退款」核准后，款项在同一数据库事务内从三处扣回——项目筹款进度、个人累计捐赠（即排行榜口径）；项目若原本已筹满，自动回到「筹款中」。捐赠状态置为 `refunded`，电子凭证随即失效（再查询返回 410）。
+4. **核准幂等**：已核准/已驳回的申请再次提交审核，只返回当前结果，金额不会扣第二次（事务内对申请、捐赠、项目、用户均加行锁）。
+
 ## 主要 API 列表
 
 统一前缀 `/api/v1`，统一响应 `{ "code": 0, "message": "ok", "data": ... }`。
@@ -97,8 +106,10 @@ go run ./cmd/server
 | GET | /projects/org/my | 我的项目 | org |
 | GET/POST | /projects/:id/updates | 项目进展 | org |
 | POST | /donations | 捐款并生成凭证 | JWT |
-| GET | /donations/my | 我的捐赠 | JWT |
-| GET | /donations/:id/certificate | 电子凭证 | JWT |
+| GET | /donations/my | 我的捐赠（含退款状态） | JWT |
+| GET | /donations/:id/certificate | 电子凭证（退款后 410 失效） | JWT |
+| POST | /donations/:id/refund | 提交退款申请（48 小时内，幂等） | JWT |
+| GET | /refunds/my | 我的退款申请与处理状态 | JWT |
 | GET | /ranking/donation | 捐款排行榜 | - |
 | GET | /ranking/service | 服务时长排行榜 | - |
 | GET | /ranking/stats | 平台统计 | - |
@@ -106,6 +117,8 @@ go run ./cmd/server
 | POST | /admin/projects/:id/review | 项目审核 | admin |
 | GET | /admin/organizations/pending | 待审核组织 | admin |
 | POST | /admin/organizations/:id/review | 组织审核 | admin |
+| GET | /admin/refunds/pending | 待处理退款申请 | admin |
+| POST | /admin/refunds/:id/review | 退款核准/驳回（幂等） | admin |
 | GET | /healthz | 存活检查 | - |
 | GET | /readyz | 就绪检查（DB ping） | - |
 

@@ -50,7 +50,22 @@ export interface Organization {
 }
 
 export type PaymentMethod = 'wechat' | 'alipay' | 'bank';
-export type PaymentStatus = 'pending' | 'success' | 'failed';
+export type PaymentStatus = 'pending' | 'success' | 'failed' | 'refunded';
+export type RefundStatus = 'pending' | 'approved' | 'rejected';
+
+export interface Refund {
+  id: string;
+  donationId: string;
+  userId: string;
+  reason: string;
+  status: RefundStatus;
+  reviewerId?: number;
+  reviewComment?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+  donation?: Donation;
+}
 
 export interface Donation {
   id: string;
@@ -68,6 +83,7 @@ export interface Donation {
   donorName?: string;
   user?: User;
   project?: Project;
+  refund?: Refund;
 }
 
 export interface ProjectUpdate {
